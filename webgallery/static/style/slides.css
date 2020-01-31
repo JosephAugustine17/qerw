@@ -1,0 +1,17 @@
+
+.images{
+display:flex;
+flex-direction:row;
+justify-content:center;
+text-align:center;
+}
+.slides{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    text-align:center; 
+}
+#delete_images
+{ display:flex;
+  align-self:center;
+}
