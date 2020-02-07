@@ -18,8 +18,8 @@
 	<form class="complex_form" id="create_image_form">
       <div class="form_title">Post a Image</div>
       <input type = "text" id = "post_username" class= "form_element" placeholder = "Enter Title" name = "title" required/>
-      <textarea rows="5" id="post_content" class="form_element" placeholder="Enter your message" required></textarea>
-      <button type="submit" class="btn">Post your message</button>
+      <input type="file" name="picture" id="picture" class="form_element" required/>
+      <button type="submit" class="btn">Post your image</button>
     </form>
     
     <form class="complex_form" id="create_message_form">
@@ -28,7 +28,8 @@
       <textarea rows="5" id="post_content" class="form_element" placeholder="Enter your message" required></textarea>
       <button type="submit" class="btn">Post your message</button>
     </form>
-    
+    <div id="images">
+    </div>
     <div id="messages">
     </div>
     

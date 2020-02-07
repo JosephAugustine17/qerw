@@ -1,11 +1,27 @@
 let api = (function(){
 	"use strict"; 
 
+function sendFiles(method, url, data, callback){
+        let formdata = new FormData();
+        Object.keys(data).forEach(function(key){
+            let value = data[key];
+            formdata.append(key, value);
+        });
+        let xhr = new XMLHttpRequest();
+        xhr.onload = function() {
+            if (xhr.status !== 200) callback("[" + xhr.status + "]" + xhr.responseText, null);
+            else callback(null, JSON.parse(xhr.responseText));
+        };
+        xhr.open(method, url, true);
+        xhr.send(formdata);
+    }
  function send(method, url, data, callback){
         var xhr = new XMLHttpRequest();
         xhr.onload = function() {
             if (xhr.status !== 200) callback("[" + xhr.status + "]" + xhr.responseText, null);
-            else callback(null, JSON.parse(xhr.responseText));
+            else 
+		{ console.log(xhr.responseText); 
+		 callback(null, JSON.parse(xhr.responseText));}
         };
         xhr.open(method, url, true);
         if (!data) xhr.send();
@@ -62,21 +78,13 @@ module.upvoteMessage = function(commentsId){
         voteListeners.push(listener);
     }
 
-    module.addImage = function(title, author, url){
- send("POST", "/api/images/", {author: author, title: title,url:url}, function(err, res){
+    module.addImage = function(author, file){
+ sendFiles("POST", "/api/images/", {username:author,file:file}, function(err, res){
              if (err) return notifyErrorListeners(err);
              notifyImageListeners();
-             notifyCommentListeners();
         });
     }
    
-    module.getImageId= function()
-	{ let jsonObject = JSON.parse(localStorage.getItem('store'))
-		if(jsonObject.imageObjects.length ==0)
-		{ return 0; 
-		}
-		return jsonObject.imageObjects[jsonObject.current-1].imageId; 
-	}
     
     // delete an image from the gallery given its imageId
     module.deleteImage = function(imageId){
@@ -94,9 +102,13 @@ module.upvoteMessage = function(commentsId){
 
     
     function notifyImageListeners()
-	{imageListeners.forEach(function(listener)
-		{listener(getImages()); 
+	{ getImages(function(err,comments)
+		{
+	if(err) return notifyErrorListeners(err); 
+	 imageListeners.forEach(function(listener)
+		{listener(comments); 
 		});
+		}); 
 	}
    let getImages = function(callback)
 	{ send("GET", "/api/images/", null, callback);
@@ -122,7 +134,10 @@ module.upvoteMessage = function(commentsId){
     // call handler when an image is added or deleted from the gallery
     module.onImageUpdate = function(handler){
 	    imageListeners.push(handler);
-	    handler(getImages()); 
+	    getImages(function(err,images)
+		    {if (err) return notifyErrorListeners(err); 
+		   handler(images);
+		    });
     }
     
     // call handler when a comment is added or deleted to an image

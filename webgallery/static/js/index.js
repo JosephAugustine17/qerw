@@ -25,7 +25,23 @@
 			    
 		    { box.style.display = "none";  
 		    }
-	    }); 
+	    });
+
+   api.onImageUpdate(function(images){
+      
+      document.querySelector('#images').innerHTML= ''; 
+	   images.forEach(function(image){ 
+	   let elmt2 = document.createElement('div');
+		      elmt2.className = "image";
+		      elmt2.innerHTML=`
+			      <img class="message_picture" src="/api/images/${image.username}/profile/picture/" alt="${image.username}">
+			      <div class = "image_author"> Author: ${image.username}</div> 
+			      <div class = "image_title"> Title :${image.username}></div>  
+			      `; 
+		     document.getElementById("images").prepend(elmt2); 	
+	   });
+   });
+           
     api.onCommentUpdate(function(messages){
         document.querySelector('#messages').innerHTML = '';
         messages.forEach(function(message){
@@ -56,11 +72,17 @@
     
     window.addEventListener('load', function(){
 	  console.log(123123); 
+	document.querySelector('#create_image_form').addEventListener('submit', function(e){        
+            e.preventDefault();
+            var username = document.querySelector("#post_username").value; 
+	    var content = document.querySelector("#picture").files[0];
+            document.getElementById("create_image_form").reset();
+            api.addImage(username, content);
+        });  
         document.querySelector('#create_message_form').addEventListener('submit', function(e){        
             e.preventDefault();
-            //var username = document.querySelector("#post_username").value;
-            var username = "joseph"; 
-	    var content = document.querySelector("#post_content").value;
+            var username = document.querySelector("#post_username").value; 
+	    var picture = document.querySelector("#post_content").value;
             document.getElementById("create_message_form").reset();
             api.addComment(1,username, content);
         });    

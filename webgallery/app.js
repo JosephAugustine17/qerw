@@ -28,8 +28,8 @@ var Message = (function(){
 
 var User= (function ()	{ 
 	  return function userItem(user,file) 
-		{   
-		   this.username = user.username; 
+		{  
+		  this.username = user.username; 
 		   this.file =file; 
 		}
 	}());
@@ -37,21 +37,38 @@ var User= (function ()	{
 
 
 // Create
+let multer = require('multer'); 
+let upload = multer({dest:path.join(__dirname, 'uploads/')});
 
-app.post('/api/images/', function (req, res, next) {
-	users.insert(new User(req.body,req.file),function(err,user)
+app.post('/api/images/',upload.single("file"), function (req, res, next) {
+    	
+   users.insert(new User(req.body,req.file),function(err,user)
 		{ if(err)
-			{return res.status(500).end(err);}
-	
+			{console.log(`postttttttttttttttttttttttttttttt ${user}`); 
+				return res.status(500).end(err);}
+	           else 
+			{return res.json(user.username)}
 		});
-
-	return res.redirect('/');
+});
+app.get('/api/images/:username/profile/picture/',function(req,res,next)
+	{users.findOne({username:req.params.username},function(err,user){ 
+		if (!user)
+		{ console.log(123131); 
+			res.status(404).end('username does not exist'); 
+		}
+		else 
+		{ console.log(user.file.mimetype);
+		  res.setHeader('Content-Type',user.file.mimetype); 
+		  res.sendFile(user.file.path); 
+		}
+	});
 });
 
 app.get('/api/images/',function (req,res,nex)
-{ users.find({}).limit(5).exec(function(err,user)
+{ users.find({}).exec(function(err,user)
 	{ if (err) {return res.status(500).end(err);}
-		return res.json(user); 
+	   console.log(user); 	
+	  return res.json(user); 
 	});
 });
 
