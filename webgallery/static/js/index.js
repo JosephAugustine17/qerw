@@ -33,13 +33,23 @@
       document.querySelector('#images').innerHTML= ''; 
 	   let elmt2 = document.createElement('div');
 		      elmt2.className = "image";
+		       let date = new Date(); 
 		      elmt2.innerHTML=`
 			      <img class="message_picture" src="/api/images/${image.username}/profile/picture/" alt="${image.username}">
 			      <div class = "image_author"> Author: ${image.username}</div> 
-			      <div class = "image_title"> Title :${image.username}></div>  
-			      `; 
+			      <div class = "image_title"> Title :${image.title}></div>
+			      <div class = "date" > Date : ${date}></div>  
+			      <div class = "delete-icon icon" > </div>
+			     
+			      `;
+		     elmt2.querySelector(".delete-icon").addEventListener('click', function()
+			     { api.deleteImage(image.id); 
+			     });
 		     document.getElementById("images").prepend(elmt2); 	
 	  
+	    }
+	   else
+	    { document.querySelector('#images').innerHTML=''; 
 	    }
    });
            
@@ -59,7 +69,7 @@
                 <div class="delete-icon icon"></div>
             `;
             elmt.querySelector(".delete-icon").addEventListener('click', function(){
-                api.deleteMessage(message._id);
+                api.deleteComment(message.commentId);
             });
             elmt.querySelector(".upvote-icon").addEventListener('click', function(){
                 api.upvoteMessage(message._id);
@@ -71,14 +81,14 @@
         });
     });
     
-    window.addEventListener('load', function(){
-	  console.log(123123); 
+    window.addEventListener('load', function(){ 
 	document.querySelector('#create_image_form').addEventListener('submit', function(e){        
             e.preventDefault();
             var username = document.querySelector("#post_username").value; 
 	    var content = document.querySelector("#picture").files[0];
+	    var title = document.querySelector("#image_title").value; 
             document.getElementById("create_image_form").reset();
-            api.addImage(username, content);
+            api.addImage(username, content,title);
         });  
         document.querySelector('#create_message_form').addEventListener('submit', function(e){        
             e.preventDefault();
@@ -97,12 +107,12 @@
 		 });
 	 document.getElementById("CommentNext-button").addEventListener('click',function(e)
 		 { e.preventDefault(); 
-	           api.nextImage(); 
+	
 		 });
 
 	document.getElementById("CommentBack-button").addEventListener('click',function(e)
 		{ e.preventDefault(); 
-		  api.backImage(); 
+		  
 		}); 
     });
 }())

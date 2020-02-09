@@ -15,12 +15,14 @@ app.use(function (req, res, next){
 var Datastore = require('nedb');
 let messages = new Datastore ({filename: 'db/messages.db', autoload : true, timeStamp : true});
 let users = new Datastore({filename:'db/users.db',autoload:true}); 
-var Message = (function(){ 
+var Message = (function(){
+    var commentId =1 ; 
     return function item(message){
         this.content = message.content;
         this.username = message.username;
         this.upvote = 0;
 	this.id = message.imageId;
+	this.commentId=commentId++; 
         this.downvote = 0;
     }
 }());
@@ -31,7 +33,9 @@ var User= (function ()	{
 		{  
 		 this.id = id++; 
 		  this.username = user.username; 
-		   this.file =file; 
+		   this.file =file;
+	          this.title = user.title;
+		     
 		}
 	}());
 
@@ -40,19 +44,58 @@ var User= (function ()	{
 // Create
 let multer = require('multer'); 
 let upload = multer({dest:path.join(__dirname, 'uploads/')});
-app.get('/api/images/:id/next/',function(req,res,next) 
-	{   users.count({},function(err,count)
-		{ if ( parseInt(req.params.id) >count)
-			{ if(count >0)
-			   { users.findOne({id :1},function(err,user)
-				   { return res.json(user)
+
+
+app.get('/api/images/:id/back/',function(req,res,next) 
+	{     
+		
+		users.findOne({id:parseInt(req.params.id)}, function(err,user)
+		{if(!user)
+                     { users.count({},function(err,count)
+		
+		{       console.log("count is " + count);
+                        console.log("id is " + req.params.id); 
+			if ( parseInt(req.params.id)<1)
+			{ 
+				users.findOne({id :parseInt(count)},function(err,user)
+				   {    console.log("Fleix");
+					 console.log(user); 
+					   return res.json(user)
 				   }); 
-			   }
+			}
+                        else
+	{ return res.status(404).end("no item found"); 
+	}
+		});
+                            } 			
+		 else
+			{ return res.json(user); 
 			}
 		});
+		});
+
+app.get('/api/images/:id/next/',function(req,res,next) 
+	{     
+		
 		users.findOne({id:parseInt(req.params.id)}, function(err,user)
-		{if(!user) return res.status(404).end("no user"); 
-			
+		{if(!user)
+                     { users.count({},function(err,count)
+		
+		{       console.log("count is " + count);
+                        console.log("id is " + req.params.id); 
+			if ( parseInt(req.params.id)>count)
+			{ 
+				users.findOne({id :1},function(err,user)
+				   {    console.log("Fleix");
+					 console.log(user); 
+					   return res.json(user)
+				   }); 
+			}
+                        else
+	{ return res.status(404).end("no item found"); 
+	}
+		});
+                            } 			
 		 else
 			{ return res.json(user); 
 			}
@@ -65,7 +108,7 @@ app.post('/api/images/',upload.single("file"), function (req, res, next) {
 				return res.status(500).end(err);}
 	           else 
 			{ console.log(user.id);
-				return res.json(user.username)}
+				return res.json(user.id)}
 		});
 });
 app.get('/api/images/:username/profile/picture/',function(req,res,next)
@@ -107,9 +150,8 @@ app.post('/api/comments/', function (req, res, next) {
 
 // Read
 
-app.get('/api/comments/:id', function (req, res, next) {
-      console.log(req.params.id); 
-	messages.find({id:parseInt(req.params.id)}).exec(function(err, message)
+app.get('/api/comments/:id/', function (req, res, next) { 
+	messages.find({id:parseInt(req.params.id)}).sort({commentId:1}).limit(10).exec(function(err, message)
 	    {
 	      if (err){ return res.status(500).end(err);}
 	else if (!message)
@@ -120,6 +162,26 @@ app.get('/api/comments/:id', function (req, res, next) {
 }
 	    });
 });
+
+app.delete('/api/images/:id/',function(req,res,next)
+	{    users.find({}).sort({id:1}).exec(function(err,image)
+		{ console.log("MUDDAFUCKKSDKLFJADL;KASDLFKJ" +image.length); 
+		  console.log("image id " + req.params.id); 
+		   for (let i=parseInt(req.params.id)-1; i<image.length; i++)
+			{console.log("image id dDBEUG" + image[i].id);
+users.update({id:image[i].id},{$inc:{id: -1 }},{},function()
+	{}); 
+			}
+		}); 
+	     users.remove({id:parseInt(req.params.id)},{},function(err,numRemoved)
+		{  
+		}); 
+	     users.findOne({id:1},function(err,user) 
+		     { 
+			return res.json(1); 
+		     });
+	});
+
 
 // Update
 
@@ -143,15 +205,12 @@ app.patch('/api/comments/:id/', function (req, res, next) {
 });
 
 // Delete
+app.delete('/api/comments/:id/', function (req, res, next) {
 
-app.delete('/api/messages/:id/', function (req, res, next) {
-     messages.remove({_id:req.params.id},{},function(err,numRemoved)
-       {}); 
-    
-	messages.findOne({_id:req.params.id},function(err,message)
-		{
-    return res.json(message);
-		}); 
+	 messages.remove({commentId:parseInt(req.params.id)},{multi:false},function(err,numRemoved)
+       { if (err) return status(500).end(err);
+	  return res.send({sucess:true}); 
+       }); 
 });
 
 const http = require('http');
