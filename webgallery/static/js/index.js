@@ -27,10 +27,10 @@
 		    }
 	    });
 
-   api.onImageUpdate(function(images){
-      
+    api.onImageUpdate(function(image){
+     if(image!=null)
+	    {
       document.querySelector('#images').innerHTML= ''; 
-	   images.forEach(function(image){ 
 	   let elmt2 = document.createElement('div');
 		      elmt2.className = "image";
 		      elmt2.innerHTML=`
@@ -39,7 +39,8 @@
 			      <div class = "image_title"> Title :${image.username}></div>  
 			      `; 
 		     document.getElementById("images").prepend(elmt2); 	
-	   });
+	  
+	    }
    });
            
     api.onCommentUpdate(function(messages){
@@ -82,10 +83,27 @@
         document.querySelector('#create_message_form').addEventListener('submit', function(e){        
             e.preventDefault();
             var username = document.querySelector("#post_username").value; 
-	    var picture = document.querySelector("#post_content").value;
-            document.getElementById("create_message_form").reset();
-            api.addComment(1,username, content);
-        });    
+	    var content = document.querySelector("#post_content").value;
+            document.getElementById("create_message_form").reset();  
+            api.addComment(api.getImageId(),username, content);
+        });
+	document.getElementById("next-button").addEventListener('click',function(e)
+		{ e.preventDefault(); 
+		  api.nextImage();
+		});
+	 document.getElementById("back-button").addEventListener('click',function(e)
+		 { e.preventDefault(); 
+		   api.backImage(); 
+		 });
+	 document.getElementById("CommentNext-button").addEventListener('click',function(e)
+		 { e.preventDefault(); 
+	           api.nextImage(); 
+		 });
+
+	document.getElementById("CommentBack-button").addEventListener('click',function(e)
+		{ e.preventDefault(); 
+		  api.backImage(); 
+		}); 
     });
 }())
 

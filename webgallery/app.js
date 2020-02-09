@@ -14,21 +14,22 @@ app.use(function (req, res, next){
 });
 var Datastore = require('nedb');
 let messages = new Datastore ({filename: 'db/messages.db', autoload : true, timeStamp : true});
-let users = new Datastore({filename:'db/users.db',autoload:true});  
-var id =0; 
+let users = new Datastore({filename:'db/users.db',autoload:true}); 
 var Message = (function(){ 
     return function item(message){
         this.content = message.content;
         this.username = message.username;
         this.upvote = 0;
-	 this.id = id++; 
+	this.id = message.imageId;
         this.downvote = 0;
     }
 }());
 
-var User= (function ()	{ 
+var User= (function ()	{
+	var id =1; 
 	  return function userItem(user,file) 
 		{  
+		 this.id = id++; 
 		  this.username = user.username; 
 		   this.file =file; 
 		}
@@ -39,36 +40,55 @@ var User= (function ()	{
 // Create
 let multer = require('multer'); 
 let upload = multer({dest:path.join(__dirname, 'uploads/')});
-
-app.post('/api/images/',upload.single("file"), function (req, res, next) {
-    	
+app.get('/api/images/:id/next/',function(req,res,next) 
+	{   users.count({},function(err,count)
+		{ if ( parseInt(req.params.id) >count)
+			{ if(count >0)
+			   { users.findOne({id :1},function(err,user)
+				   { return res.json(user)
+				   }); 
+			   }
+			}
+		});
+		users.findOne({id:parseInt(req.params.id)}, function(err,user)
+		{if(!user) return res.status(404).end("no user"); 
+			
+		 else
+			{ return res.json(user); 
+			}
+		});
+		});
+app.post('/api/images/',upload.single("file"), function (req, res, next) { 	
    users.insert(new User(req.body,req.file),function(err,user)
 		{ if(err)
-			{console.log(`postttttttttttttttttttttttttttttt ${user}`); 
+			{
 				return res.status(500).end(err);}
 	           else 
-			{return res.json(user.username)}
+			{ console.log(user.id);
+				return res.json(user.username)}
 		});
 });
 app.get('/api/images/:username/profile/picture/',function(req,res,next)
 	{users.findOne({username:req.params.username},function(err,user){ 
 		if (!user)
-		{ console.log(123131); 
+		{  
 			res.status(404).end('username does not exist'); 
 		}
 		else 
-		{ console.log(user.file.mimetype);
+		{ 
 		  res.setHeader('Content-Type',user.file.mimetype); 
 		  res.sendFile(user.file.path); 
 		}
 	});
 });
 
-app.get('/api/images/',function (req,res,nex)
-{ users.find({}).exec(function(err,user)
-	{ if (err) {return res.status(500).end(err);}
-	   console.log(user); 	
-	  return res.json(user); 
+app.get('/api/images/:id',function (req,res,next)
+{       console.log("userid" + req.params.id); 
+	users.findOne({id:parseInt(req.params.id)},function(err,user)
+	{ if(!user)
+		{console.log("nothing");}
+		console.log(user);
+		return res.json(user); 
 	});
 });
 
@@ -76,7 +96,10 @@ app.post('/api/comments/', function (req, res, next) {
      messages.insert(new Message(req.body), function(err,message) 
 	     {
 	       if (err) return res.status(500).end(err);
-	       else{
+		     else if (!message)
+		     { return res.status(404).end("no user"); 
+		     }
+		  else{
          return res.json(message);
 	       }
 	     }); 
@@ -84,11 +107,15 @@ app.post('/api/comments/', function (req, res, next) {
 
 // Read
 
-app.get('/api/comments/', function (req, res, next) {
-      messages.find({}).limit(5).exec(function(err, message)
+app.get('/api/comments/:id', function (req, res, next) {
+      console.log(req.params.id); 
+	messages.find({id:parseInt(req.params.id)}).exec(function(err, message)
 	    {
 	      if (err){ return res.status(500).end(err);}
-	      else {
+	else if (!message)
+		    {return res.status(404).end(err); 
+		    }
+	     else {
 		 return res.json(message); 
 }
 	    });

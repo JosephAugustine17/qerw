@@ -1,6 +1,8 @@
 let api = (function(){
 	"use strict"; 
-
+if (!localStorage.getItem('store'))
+		{ localStorage.setItem('image', JSON.stringify({currentId:0}))
+				}; 
 function sendFiles(method, url, data, callback){
         let formdata = new FormData();
         Object.keys(data).forEach(function(key){
@@ -54,7 +56,13 @@ function sendFiles(method, url, data, callback){
     // add an image to the gallery
 
 let voteListeners = [];
-    
+module.getImageId = function() 
+	{ return getCurrentId();
+	}
+   function getCurrentId()
+	{ let jsonObject =JSON.parse(localStorage.getItem('image'));
+	  return(jsonObject.currentId); 
+	}
 module.upvoteMessage = function(commentsId){
         send("PATCH", "/api/comments/" +commentsId+"/", {action: 'upvote'}, function(err, res){
              if (err) return notifyErrorListeners(err);
@@ -77,53 +85,81 @@ module.upvoteMessage = function(commentsId){
     module.onVoteUpdate = function(listener){
         voteListeners.push(listener);
     }
-
+   function updateCurrent()
+	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
+	   jsonObject.currentId = jsonObject.currentId+1; 
+	    localStorage.setItem('image', JSON.stringify(jsonObject));
+	}
     module.addImage = function(author, file){
- sendFiles("POST", "/api/images/", {username:author,file:file}, function(err, res){
+    updateCurrent(); 
+  sendFiles("POST", "/api/images/", {username:author,title:"trash",file:file}, function(err, res){
              if (err) return notifyErrorListeners(err);
-             notifyImageListeners();
+             notifyImageListeners(getCurrentId());
+	     notifyCommentListeners(getCurrentId()); 
         });
     }
    
-    
-    // delete an image from the gallery given its imageId
-    module.deleteImage = function(imageId){
-	    }
-   
-    
-    function notifyCommentListeners()
-	{   getComment(function(err,comments)
-		{ if (err) return notifyErrorListeners(err);
-		  commentListeners.forEach(function(listener)
-			  {listener(comments); 
-		});
-	});
-	}
-
-    
-    function notifyImageListeners()
-	{ getImages(function(err,comments)
-		{
-	if(err) return notifyErrorListeners(err); 
-	 imageListeners.forEach(function(listener)
-		{listener(comments); 
-		});
+   module.nextImage = function() 
+	{  let current = getCurrentId(); 
+	   getNextImage(current+1,function(err,image)
+		{ if(err) return notifyErrorListeners(err);
+		  imageListeners.forEach(function(listener)
+			  { listener(image)
+			  });
 		}); 
 	}
-   let getImages = function(callback)
-	{ send("GET", "/api/images/", null, callback);
+
+  let getNextImage = function(imageId,callback)
+	{ send("GET", "/api/comments/" + imageId+"/next/", null,callback); 
 	}
-   let getComment = function (callback)
-{send("GET", "/api/comments/", null, callback);
+    function notifyCommentListeners(imageId)
+	{  let commentList = [];  
+	   getComment(imageId,function(err,comments)
+		{
+			comments.forEach(function(comment)
+				{
+					if(comment.id == getCurrentId())
+					{ commentList.push(comment); 
+					}
+				}); 	
+		 if (err) return notifyErrorListeners(err);
+		  commentListeners.forEach(function(listener)
+			  {listener(commentList);
+			  });
+					
+		
+	});
+	}
+    function notifyImageListeners(imageId)
+	{ 
+		getImages(imageId,function(err,images)
+			{
+				if(err) return notifyErrorListeners(err);
+				{imageListeners.forEach(function(listener)
+								{
+									listener(images); 
+								});
+				}
+
+			});
+	}
+   let getImages= function(imageId,callback)
+	{      let current = getCurrentId(); 
+		send("GET", "/api/images/"+imageId+"/", null, callback);
+	}
+   let getComment = function (imageId,callback)
+{      let current= getCurrentId();  
+	send("GET", "/api/comments/"+imageId+"/", null, callback);
 	}
     
     // add a comment to an image
-    module.addComment = function(imageId, author, content){
-  send("POST", "/api/comments/", {imageId: imageId, content: content,author:author}, function(err, res){
-             if (err) return notifyErrorListeners(err);
-             notifyCommentListeners();
-              
-        });
+    module.addComment = function(imageId, username,content){
+    console.log(imageId); 
+  send("POST", "/api/comments/", {imageId: imageId, username: username,content:content}, function(err, res)
+	  {         if (err) return notifyErrorListeners(err);
+             notifyCommentListeners(getCurrentId());
+	  });
+       
     }
     
     // delete a comment to an image
@@ -134,7 +170,7 @@ module.upvoteMessage = function(commentsId){
     // call handler when an image is added or deleted from the gallery
     module.onImageUpdate = function(handler){
 	    imageListeners.push(handler);
-	    getImages(function(err,images)
+	    getImages(getCurrentId(),function(err,images)
 		    {if (err) return notifyErrorListeners(err); 
 		   handler(images);
 		    });
@@ -143,7 +179,7 @@ module.upvoteMessage = function(commentsId){
     // call handler when a comment is added or deleted to an image
     module.onCommentUpdate = function(handler){
         commentListeners.push(handler);
-	    getComment(function(err,comments)
+	    getComment(getCurrentId(),function(err,comments)
 		    { if (err) return notifyErrorListeners(err); 
 		      handler(comments);
 		    }); 
