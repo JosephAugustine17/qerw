@@ -22,7 +22,7 @@ function sendFiles(method, url, data, callback){
         xhr.onload = function() {
             if (xhr.status !== 200) callback("[" + xhr.status + "]" + xhr.responseText, null);
             else 
-		{ console.log(xhr.responseText); 
+		{ 
 		 callback(null, JSON.parse(xhr.responseText));}
         };
         xhr.open(method, url, true);
@@ -109,7 +109,6 @@ module.upvoteMessage = function(commentsId){
 	   getNextImage(current+1,function(err,image)
 		{ if(err) return notifyErrorListeners(err);
 		  changeCurrent(image.id);
-		  console.log("current id is" + getCurrentId()); 
 		  imageListeners.forEach(function(listener)
 			  { listener(image)
 			  });
@@ -123,7 +122,6 @@ module.upvoteMessage = function(commentsId){
 		{ if(err) return notifyErrorListeners(err);
 		  changeCurrent(image.id);
 
-		  console.log("current id is" + getCurrentId()); 
 		  imageListeners.forEach(function(listener)
 			  { listener(image)
 			  });
@@ -179,7 +177,6 @@ module.upvoteMessage = function(commentsId){
     
     // add a comment to an image
     module.addComment = function(imageId, username,content){
-    console.log(imageId); 
   send("POST", "/api/comments/", {imageId: imageId, username: username,content:content}, function(err, res)
 	  {         if (err) return notifyErrorListeners(err);
              notifyCommentListeners(getCurrentId());

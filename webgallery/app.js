@@ -53,13 +53,12 @@ app.get('/api/images/:id/back/',function(req,res,next)
 		{if(!user)
                      { users.count({},function(err,count)
 		
-		{       console.log("count is " + count);
-                        console.log("id is " + req.params.id); 
+		{       
 			if ( parseInt(req.params.id)<1)
 			{ 
 				users.findOne({id :parseInt(count)},function(err,user)
-				   {    console.log("Fleix");
-					 console.log(user); 
+				   {   
+					 
 					   return res.json(user)
 				   }); 
 			}
@@ -81,13 +80,11 @@ app.get('/api/images/:id/next/',function(req,res,next)
 		{if(!user)
                      { users.count({},function(err,count)
 		
-		{       console.log("count is " + count);
-                        console.log("id is " + req.params.id); 
+		{       
 			if ( parseInt(req.params.id)>count)
 			{ 
 				users.findOne({id :1},function(err,user)
-				   {    console.log("Fleix");
-					 console.log(user); 
+				   {   
 					   return res.json(user)
 				   }); 
 			}
@@ -107,7 +104,7 @@ app.post('/api/images/',upload.single("file"), function (req, res, next) {
 			{
 				return res.status(500).end(err);}
 	           else 
-			{ console.log(user.id);
+			{ 
 				return res.json(user.id)}
 		});
 });
@@ -126,17 +123,18 @@ app.get('/api/images/:username/profile/picture/',function(req,res,next)
 });
 
 app.get('/api/images/:id',function (req,res,next)
-{       console.log("userid" + req.params.id); 
+{       
 	users.findOne({id:parseInt(req.params.id)},function(err,user)
-	{ if(!user)
-		{console.log("nothing");}
-		console.log(user);
+	{ 
 		return res.json(user); 
 	});
 });
 
 app.post('/api/comments/', function (req, res, next) {
-     messages.insert(new Message(req.body), function(err,message) 
+    users.count ({},function (err,count){
+	
+	   if (count!=0)
+	    {messages.insert(new Message(req.body), function(err,message) 
 	     {
 	       if (err) return res.status(500).end(err);
 		     else if (!message)
@@ -145,7 +143,9 @@ app.post('/api/comments/', function (req, res, next) {
 		  else{
          return res.json(message);
 	       }
-	     }); 
+	     });
+	    }
+    }); 
 });
 
 // Read
@@ -167,7 +167,7 @@ app.delete('/api/images/:id/',function(req,res,next)
 	{    users.find({}).sort({id:1}).exec(function(err,image)
 		{ 
 		   for (let i=parseInt(req.params.id)-1; i<image.length; i++)
-			{console.log("image id dDBEUG" + image[i].id);
+			{
 users.update({id:image[i].id},{$inc:{id: -1 }},{},function()
 	{}); 
 			}
