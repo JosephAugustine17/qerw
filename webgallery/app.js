@@ -165,14 +165,15 @@ app.get('/api/comments/:id/', function (req, res, next) {
 
 app.delete('/api/images/:id/',function(req,res,next)
 	{    users.find({}).sort({id:1}).exec(function(err,image)
-		{ console.log("MUDDAFUCKKSDKLFJADL;KASDLFKJ" +image.length); 
-		  console.log("image id " + req.params.id); 
+		{ 
 		   for (let i=parseInt(req.params.id)-1; i<image.length; i++)
 			{console.log("image id dDBEUG" + image[i].id);
 users.update({id:image[i].id},{$inc:{id: -1 }},{},function()
 	{}); 
 			}
-		}); 
+		});
+	    messages.remove({id:parseInt(req.params.id)},{multi:true},function (err,numRemoved)
+		{}); 
 	     users.remove({id:parseInt(req.params.id)},{},function(err,numRemoved)
 		{  
 		}); 
