@@ -150,8 +150,8 @@ app.post('/api/comments/', function (req, res, next) {
 
 // Read
 
-app.get('/api/comments/:id/', function (req, res, next) { 
-	messages.find({id:parseInt(req.params.id)}).sort({commentId:1}).limit(10).exec(function(err, message)
+app.get('/api/comments/:id/:page', function (req, res, next) { 
+	messages.find({id:parseInt(req.params.id)}).sort({commentId:-1}).skip(req.params.page*10).limit(10).exec(function(err, message)
 	    {
 	      if (err){ return res.status(500).end(err);}
 	else if (!message)
@@ -161,6 +161,12 @@ app.get('/api/comments/:id/', function (req, res, next) {
 		 return res.json(message); 
 }
 	    });
+});
+
+app.get ('/api/comments/:id', function(req,res,next) {
+	messages.count ({id:parseInt(req.params.id)},function (err,count)
+		{ return res.json(count); 
+		});
 });
 
 app.delete('/api/images/:id/',function(req,res,next)

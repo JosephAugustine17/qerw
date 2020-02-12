@@ -77,7 +77,7 @@
             elmt.querySelector(".downvote-icon").addEventListener('click', function(){
                 api.downvoteMessage(message._id);
             });
-            document.querySelector("#messages").prepend(elmt);
+            document.querySelector("#messages").append(elmt);
         });
     });
     
@@ -107,12 +107,12 @@
 		 });
 	 document.getElementById("CommentNext-button").addEventListener('click',function(e)
 		 { e.preventDefault(); 
-	
-		 });
+	           api.nextComment(); 
+        	 	 });
 
 	document.getElementById("CommentBack-button").addEventListener('click',function(e)
 		{ e.preventDefault(); 
-		  
+		  api.backComment(); 
 		}); 
     });
 }())

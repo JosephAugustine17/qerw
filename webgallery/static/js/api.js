@@ -1,7 +1,7 @@
 let api = (function(){
 	"use strict"; 
 if (!localStorage.getItem('store'))
-		{ localStorage.setItem('image', JSON.stringify({currentId:1}))
+		{ localStorage.setItem('image', JSON.stringify({currentId:1,page:0}))
 				}; 
 function sendFiles(method, url, data, callback){
         let formdata = new FormData();
@@ -59,6 +59,15 @@ let voteListeners = [];
 module.getImageId = function() 
 	{ return getCurrentId();
 	}
+function setPage(page)
+	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
+		jsonObject.page=page;
+		localStorage.setItem('image',JSON.stringify(jsonObject)); 
+	}
+function getPage()
+	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
+	  return (jsonObject.page); 
+	}
 function changeCurrent(id)
 	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
              jsonObject.currentId = id; 
@@ -105,7 +114,8 @@ module.upvoteMessage = function(commentsId){
     }
    
    module.nextImage = function() 
-	{  let current = getCurrentId(); 
+	{  let current = getCurrentId();
+	   setPage(0); 
 	   getNextImage(current+1,function(err,image)
 		{ if(err) return notifyErrorListeners(err);
 		  changeCurrent(image.id);
@@ -117,7 +127,8 @@ module.upvoteMessage = function(commentsId){
 	}
 
    module.backImage = function() 
-	{  let current = getCurrentId(); 
+	{  let current = getCurrentId();
+	   setPage(0);
 	   getBackImage(current-1,function(err,image)
 		{ if(err) return notifyErrorListeners(err);
 		  changeCurrent(image.id);
@@ -128,7 +139,36 @@ module.upvoteMessage = function(commentsId){
 	         notifyCommentListeners(image.id); 
 		}); 
 	}
+ module.nextComment = function () 
+	{  let current = getCurrentId();
+	   let page = getPage()+1;
+	  
+	  send("GET", "/api/comments/"+current+"/", null,function(err,res)
+		  { if (res > (page*10))
+			  { setPage(page); 
+			  }
+		    else
+			  { setPage(0); 
+			  }
+		   notifyCommentListeners(current); 
+		  });
+	}
 
+module.backComment = function () 
+	{  let current = getCurrentId();
+	   let page = getPage()-1;
+	  send("GET", "/api/comments/"+current+"/", null,function(err,res)
+		  { 
+		if (page< 0)
+			  { setPage(Math.floor(res/10)); 
+			  }
+		     
+		     else 
+			  {setPage(page); 
+			  }
+	    notifyCommentListeners(current); 
+});
+}; 
   let getBackImage = function(imageId,callback)
 	{ send("GET", "/api/images/" + imageId+"/back/", null,callback); 
 	}
@@ -171,8 +211,9 @@ module.upvoteMessage = function(commentsId){
 		send("GET", "/api/images/"+imageId+"/", null, callback);
 	}
    let getComment = function (imageId,callback)
-{      let current= getCurrentId();  
-	send("GET", "/api/comments/"+imageId+"/", null, callback);
+{      let current= getCurrentId();
+	let page = getPage();
+	send("GET", "/api/comments/"+imageId+"/"+page+"/", null, callback);
 	}
     
     // add a comment to an image
