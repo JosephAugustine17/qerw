@@ -15,7 +15,6 @@ app.use(function (req, res, next){
     console.log("HTTP request", req.method, req.url, req.body);
     next();
 });
-
 var Datastore = require('nedb');
 let images = new Datastore({filename:'db/images.db',autoload:true}); 
 let messages = new Datastore ({filename: 'db/messages.db', autoload : true, timeStamp : true});
@@ -34,10 +33,10 @@ var Message = (function(){
 
 var Image= (function ()	{
 	var id =1; 
-	  return function userImage(user,file) 
+	  return function userImage(user,file,username) 
 		{  
 		 this.id = id++; 
-		  this.username = user.username; 
+		  this.username = username; 
 		   this.file =file;
 	          this.title = user.title;
 		     
@@ -63,6 +62,7 @@ app.use(function (req, res, next){
     next();
 });
 let isAuthenticated = function(req, res, next) {
+	console.log(88898);
     if (!req.username) return res.status(401).end("access denied");
     next();
 };
@@ -131,10 +131,10 @@ app.get('/api/images/:id/back/',function(req,res,next)
 		
 		images.findOne({id:parseInt(req.params.id)}, function(err,user)
 		{if(!user)
-                     { image.count({},function(err,count)
-		
-		{       
-			if ( parseInt(req.params.id)<1)
+			{ 
+				images.count({},function(err,count)
+				{       
+					if ( parseInt(req.params.id)<1)
 			{ 
 				images.findOne({id :parseInt(count)},function(err,image)
 				   {   
@@ -146,9 +146,9 @@ app.get('/api/images/:id/back/',function(req,res,next)
 	{ return res.status(404).end("no item found"); 
 	}
 		});
-                            } 			
+	 } 			
 		 else
-			{ return res.json(image); 
+			{ return res.json(user); 
 			}
 		});
 		});
@@ -179,7 +179,7 @@ app.get('/api/images/:id/next/',function(req,res,next)
 		});
 		});
 app.post('/api/images/',upload.single("file"), function (req, res, next) { 	
-   images.insert(new Image(req.body,req.file),function(err,image)
+   images.insert(new Image(req.body,req.file,req.username),function(err,image)
 		{ if(err)
 			{
 				return res.status(500).end(err);}
@@ -258,6 +258,10 @@ images.update({id:image[i].id},{$inc:{id: -1 }},{},function()
 	{}); 
 			}
 		});
+		if ( images.username!=req.username)
+		{
+			return res.status(403).end("forbidden"); 
+		}
 	    messages.remove({id:parseInt(req.params.id)},{multi:true},function (err,numRemoved)
 		{}); 
 	     images.remove({id:parseInt(req.params.id)},{},function(err,numRemoved)
