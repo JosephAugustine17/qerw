@@ -56,6 +56,20 @@ function sendFiles(method, url, data, callback){
     // add an image to the gallery
 
 let voteListeners = [];
+
+module.signup = function(username, password){
+	send("POST", "/signup/", {username, password}, function(err, res){
+		 if (err) return notifyErrorListeners(err);
+		 notifyUserListeners(getUsername());
+	});
+}
+
+module.signin = function(username, password){
+	send("POST", "/signin/", {username, password}, function(err, res){
+		 if (err) return notifyErrorListeners(err);
+		 notifyUserListeners(getUsername());
+	});
+}
 module.getImageId = function() 
 	{ return getCurrentId();
 	}
@@ -125,6 +139,35 @@ module.upvoteMessage = function(commentsId){
                  notifyCommentListeners(image.id); 
 		}); 
 	}
+	let userListeners = [];
+	module.onUserUpdate = function(listener){
+        userListeners.push(listener);
+        listener(getUsername());
+    }
+    
+    module.signin = function(username, password){
+        send("POST", "/signin/", {username, password}, function(err, res){
+             if (err) return notifyErrorListeners(err);
+             notifyUserListeners(getUsername());
+        });
+	}
+	let getUsername = function(){
+        return document.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    }
+    
+	function notifyUserListeners(username){
+        userListeners.forEach(function(listener){
+            listener(username);
+        });
+    };
+    
+    module.signup = function(username, password){
+        send("POST", "/signup/", {username, password}, function(err, res){
+             if (err) return notifyErrorListeners(err);
+             notifyUserListeners(getUsername());
+        });
+    }
+
 
    module.backImage = function() 
 	{  let current = getCurrentId();

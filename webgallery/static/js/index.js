@@ -25,8 +25,14 @@
 			    
 		    { box.style.display = "none";  
 		    }
-	    });
-
+        });
+    
+     api.onUserUpdate(function(username){
+            document.querySelector("#signin_button").style.visibility = (username)? 'hidden' : 'visible';
+            document.querySelector("#signout_button").style.visibility = (username)? 'visible' : 'hidden';
+            document.querySelector('#create_message_form').style.visibility = (username)? 'visible' : 'hidden';
+            document.querySelector('#create_image_form').style.visibility = (username)? 'visible' : 'hidden';
+    });
     api.onImageUpdate(function(image){
      if(image!=null)
 	    {
