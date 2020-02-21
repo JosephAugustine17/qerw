@@ -1,8 +1,12 @@
+
 let api = (function(){
 	"use strict"; 
 if (!localStorage.getItem('store'))
 		{ localStorage.setItem('image', JSON.stringify({currentId:1,page:0}))
-				}; 
+				};
+
+const urlParams = new URLSearchParams(window.location.search);
+const usernameOnPage = urlParams.get('username'); 
 function sendFiles(method, url, data, callback){
         let formdata = new FormData();
         Object.keys(data).forEach(function(key){
@@ -60,16 +64,20 @@ let voteListeners = [];
 module.signup = function(username, password){
 	send("POST", "/signup/", {username, password}, function(err, res){
 		 if (err) return notifyErrorListeners(err);
-		 notifyUserListeners(getUsername());
+		 notifySignListeners(getUsername());
+		 changeCurrent(1); 
 	});
 }
 
 module.signin = function(username, password){
 	send("POST", "/signin/", {username, password}, function(err, res){
 		 if (err) return notifyErrorListeners(err);
-		 notifyUserListeners(getUsername());
+		 notifySignListeners(getUsername());
 	});
+	changeCurrent(1); 
+
 }
+
 module.getImageId = function() 
 	{ return getCurrentId();
 	}
@@ -118,8 +126,12 @@ module.upvoteMessage = function(commentsId){
 	   jsonObject.currentId = jsonObject.currentId+1; 
 	    localStorage.setItem('image', JSON.stringify(jsonObject));
 	}
+
+
+
     module.addImage = function(author,file,title){ 
-  sendFiles("POST", "/api/images/", {username:author,title:title,file:file}, function(err, res){
+		let amount; 
+		sendFiles("POST", "/api/images/"+ usernameOnPage+"/", {username:author,title:title,file:file}, function(err, res){
              if (err) return notifyErrorListeners(err);
 	     changeCurrent(res); 
              notifyImageListeners(getCurrentId());
@@ -140,23 +152,28 @@ module.upvoteMessage = function(commentsId){
 		}); 
 	}
 	let userListeners = [];
-	module.onUserUpdate = function(listener){
-        userListeners.push(listener);
+	let signListeners = []
+	module.onSignUpdate = function(listener){
+		signListeners.push(listener);
         listener(getUsername());
     }
+	let getUsers = function (callback)
+	{
+		send("GET", "/api/users/", null, callback); 
+	}
     
     module.signin = function(username, password){
         send("POST", "/signin/", {username, password}, function(err, res){
              if (err) return notifyErrorListeners(err);
-             notifyUserListeners(getUsername());
+             notifySignListeners(getUsername());
         });
 	}
 	let getUsername = function(){
         return document.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1");
     }
-    
-	function notifyUserListeners(username){
-        userListeners.forEach(function(listener){
+
+	function notifySignListeners(username){
+        signListeners.forEach(function(listener){
             listener(username);
         });
     };
@@ -164,7 +181,7 @@ module.upvoteMessage = function(commentsId){
     module.signup = function(username, password){
         send("POST", "/signup/", {username, password}, function(err, res){
              if (err) return notifyErrorListeners(err);
-             notifyUserListeners(getUsername());
+             notifySignListeners(getUsername());
         });
     }
 
@@ -213,12 +230,13 @@ module.backComment = function ()
 });
 }; 
   let getBackImage = function(imageId,callback)
-	{ send("GET", "/api/images/" + imageId+"/back/", null,callback); 
+	{ send("GET", "/api/images/" + imageId+"/"+ usernameOnPage + "/back/", null,callback); 
 	}
   let getNextImage = function(imageId,callback)
-	{ send("GET", "/api/images/" + imageId+"/next/", null,callback); 
+	{ send("GET", "/api/images/" + imageId+"/"+ usernameOnPage + "/next/", null,callback); 
 	}
-    function notifyCommentListeners(imageId)
+	
+	function notifyCommentListeners(imageId)
 	{  let commentList = [];  
 	   getComment(imageId,function(err,comments)
 		{
@@ -232,8 +250,6 @@ module.backComment = function ()
 		  commentListeners.forEach(function(listener)
 			  {listener(commentList);
 			  });
-					
-		
 	});
 	}
     function notifyImageListeners(imageId)
@@ -249,24 +265,35 @@ module.backComment = function ()
 
 			});
 	}
+	module.getAllUsers = function ()
+	{ send("GET", "/api/users/", null, function(err,res)
+	{
+	   if (err) return notifyErrorListeners(err);
+	   res.forEach(function(username) 
+	   {notifySignListeners(username); 	
+	   });  	
+	}); 
+
+	}
    let getImages= function(imageId,callback)
 	{      let current = getCurrentId(); 
-		send("GET", "/api/images/"+imageId+"/", null, callback);
+		send("GET", "/api/images/"+imageId+"/"+ usernameOnPage+ "/", null, callback);
 	}
    let getComment = function (imageId,callback)
 {      let current= getCurrentId();
 	let page = getPage();
-	send("GET", "/api/comments/"+imageId+"/"+page+"/", null, callback);
+	send("GET", "/api/comments/"+imageId+"/"+page+"/" + usernameOnPage +"/", null, callback);
 	}
     
     // add a comment to an image
     module.addComment = function(imageId, username,content){
-  send("POST", "/api/comments/", {imageId: imageId, username: username,content:content}, function(err, res)
+		console.log(username); 
+  send("POST", "/api/comments/", {imageId: imageId, username: username,content:content,usernameOnPage:usernameOnPage}, function(err, res)
 	  {         if (err) return notifyErrorListeners(err);
              notifyCommentListeners(getCurrentId());
 	  });
-       
-    }
+	}
+   
     module.deleteImage = function (imageId) 
    { send("DELETE", "/api/images/"+imageId+"/",null,function(err,res)
 	  { if (err) return notifyErrorListeners(err); 
@@ -275,6 +302,7 @@ module.backComment = function ()
 	      notifyCommentListeners(res); 
 	   });
    }
+
     // delete a comment to an image
     module.deleteComment = function(commentId){
        send("DELETE", "/api/comments/"+commentId+ "/", null,function(err,res) 
@@ -290,7 +318,16 @@ module.backComment = function ()
 		    {if (err) return notifyErrorListeners(err); 
 		   handler(images);
 		    });
-    }
+	}
+
+	// call handler when an image is added or deleted from the gallery
+    module.onUserUpdate = function(handler){
+	    userListeners.push(handler);
+	    getUsers(function(err,users)
+		    {if (err) return notifyErrorListeners(err); 
+		   handler(users);
+		    });
+	}
     
     // call handler when a comment is added or deleted to an image
     module.onCommentUpdate = function(handler){
@@ -300,7 +337,7 @@ module.backComment = function ()
 		      handler(comments);
 		    }); 
  
-    }
+	}
 
 let errorListeners = [];
     
@@ -308,7 +345,8 @@ let errorListeners = [];
         errorListeners.forEach(function(listener){
             listener(err);
         });
-    }
+	}
+
     
     module.onError = function(listener){
         errorListeners.push(listener);

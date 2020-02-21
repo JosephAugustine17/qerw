@@ -18,7 +18,8 @@ app.use(function (req, res, next){
 var Datastore = require('nedb');
 let images = new Datastore({filename:'db/images.db',autoload:true}); 
 let messages = new Datastore ({filename: 'db/messages.db', autoload : true, timeStamp : true});
-let users = new Datastore({filename:'db/users.db',autoload:true}); 
+let users = new Datastore({filename:'db/users.db',autoload:true});
+
 var Message = (function(){
     var commentId =1 ; 
     return function item(message){
@@ -27,24 +28,24 @@ var Message = (function(){
         this.upvote = 0;
 	this.id = message.imageId;
 	this.commentId=commentId++; 
-        this.downvote = 0;
+		this.downvote = 0;
+	this.currentGallery = message.usernameOnPage; 
     }
 }());
 
 var Image= (function ()	{
-	var id =1; 
-	  return function userImage(user,file,username) 
-		{  
-		 this.id = id++; 
+	var id =0; 
+	  return function userImage(user,file,username,count) 
+		{ 
+	    id = count;
+		 this.id = id+1; 
 		  this.username = username; 
 		   this.file =file;
-	          this.title = user.title;
+			  this.title = user.title;
+			
 		     
 		}
 	}());
-
-
-
 	app.use(session({
 		secret: 'please change this secret',
 		resave: false,
@@ -62,7 +63,6 @@ app.use(function (req, res, next){
     next();
 });
 let isAuthenticated = function(req, res, next) {
-	console.log(88898);
     if (!req.username) return res.status(401).end("access denied");
     next();
 };
@@ -76,10 +76,12 @@ app.post('/signup/', function (req, res, next) {
     console.log(salt, saltedHash);
     users.findOne({_id: username}, function(err, user){
         if (err) return res.status(500).end(err);
-        if (user) return res.status(409).end("username " + username + " already exists");
+		if (user) return res.status(409).end("username " + username + " already exists");
+		//users.insert(new User (username,saltedHash,salt),function(err,user)
         users.update({_id: username},{_id: username,password:saltedHash,salt}, {upsert: true}, function(err){
             if (err) return res.status(500).end(err);
-            // initialize cookie
+			// initialize cookie
+			
             res.setHeader('Set-Cookie', cookie.serialize('username', username, {
                   path : '/', 
                   maxAge: 60 * 60 * 24 * 7
@@ -98,9 +100,8 @@ app.post('/signin/', function (req, res, next) {
         if (!user) return res.status(401).end("access denied"); 
         var hash = crypto.createHmac('sha512', user.salt);
         hash.update(password);
-	console.log(user.password);
         var saltedHash = hash.digest('base64');
-	console.log(saltedHash) 
+
         if (user.password !== saltedHash) return res.status(401).end("access denied"); 
         // initialize cookie
         req.session.username = username; 
@@ -116,8 +117,9 @@ app.get('/signout/', function (req, res, next) {
     res.setHeader('Set-Cookie', cookie.serialize('username', '', {
           path : '/', 
           maxAge: 60 * 60 * 24 * 7 // 1 week in number of seconds
-    }));
-    res.redirect('/');
+	}));
+	res.redirect('/login.html');
+
 });
 
 
@@ -126,70 +128,85 @@ let multer = require('multer');
 let upload = multer({dest:path.join(__dirname, 'uploads/')});
 
 
-app.get('/api/images/:id/back/',function(req,res,next) 
+app.get('/api/images/:id/:usernameOnPage/back/',function(req,res,next) 
 	{     
-		
-		images.findOne({id:parseInt(req.params.id)}, function(err,user)
-		{if(!user)
+		images.findOne({id:parseInt(req.params.id),username:req.params.usernameOnPage}, function(err,image1)
+		{
+			if(!image1)
 			{ 
-				images.count({},function(err,count)
+				images.count({username:req.params.usernameOnPage},function(err,count)
 				{       
-					if ( parseInt(req.params.id)<1)
+					if (parseInt(req.params.id)<1)
+					{
+						images.findOne({id :parseInt(count),username: req.params.usernameOnPage},function(err,image)
+						{   
+							return res.json(image)
+						}); 
+					}
+					 else
+					 { return res.status(404).end("no item found"); 
+					 }
+				});
+			} 			
+			else
 			{ 
-				images.findOne({id :parseInt(count)},function(err,image)
-				   {   
-					 
-					   return res.json(image)
-				   }); 
-			}
-                        else
-	{ return res.status(404).end("no item found"); 
-	}
-		});
-	 } 			
-		 else
-			{ return res.json(user); 
+				return res.json(image1); 
 			}
 		});
-		});
+	});
 
-app.get('/api/images/:id/next/',function(req,res,next) 
+app.get('/api/images/:id/:usernameOnPage/next/',function(req,res,next) 
 	{     
-		
-		images.findOne({id:parseInt(req.params.id)}, function(err,image)
-		{if(!image)
-                     { images.count({},function(err,count)
-		
-		{       
-			if ( parseInt(req.params.id)>count)
-			{ 
-				images.findOne({id :1},function(err,image)
-				   {   
-					   return res.json(image)
-				   }); 
-			}
-                        else
-	{ return res.status(404).end("no item found"); 
-	}
-		});
-                            } 			
-		 else
-			{ return res.json(image); 
-			}
-		});
-		});
-app.post('/api/images/',upload.single("file"), function (req, res, next) { 	
-   images.insert(new Image(req.body,req.file,req.username),function(err,image)
+	      	
+		images.findOne({id:parseInt(req.params.id),username:req.params.usernameOnPage}, function(err,image)
+			{if(!image)
+				{ images.count({username:req.params.username},function(err,count)
+					{       
+						if ( parseInt(req.params.id)>count)
+						{ 
+							images.findOne({id:1,username:req.params.usernameOnPage},function(err,image2)
+								{
+									return res.json(image2)
+								}); 
+						}
+						else
+						{
+							return res.status(404).end("no item found"); 
+						}
+					});
+				} 			
+				else
+				{ return res.json(image); 
+				}
+			});
+	});
+
+app.post('/api/images/:usernameOnPage',upload.single("file"), function (req, res, next) {
+	if (req.params.usernameOnPage == req.username)
+	{
+		images.count({username: req.username},function (err,count)
+		{
+   images.insert(new Image(req.body,req.file,req.username,count),function(err,image)
 		{ if(err)
 			{
 				return res.status(500).end(err);}
 	           else 
 			{ 
-				return res.json(image.id)}
+				images.count({username : req.username},function (err,count)
+				{
+				return res.json(count);
+				}); 
+			}
 		});
+	}); 
+	}
+	else 
+	{
+		return res.status(404).end("permisssion denied"); 
+	}
 });
-app.get('/api/images/:username/profile/picture/',function(req,res,next)
-	{images.findOne({username:req.params.username},function(err,image){ 
+app.get('/api/images/:username/:id/profile/picture/',function(req,res,next)
+	{images.findOne({username:req.params.username,id:parseInt(req.params.id)},function(err,image){ 
 		if (!image)
 		{  
 			res.status(404).end('username does not exist'); 
@@ -202,19 +219,26 @@ app.get('/api/images/:username/profile/picture/',function(req,res,next)
 	});
 });
 
-app.get('/api/images/:id',function (req,res,next)
-{       
-	images.findOne({id:parseInt(req.params.id)},function(err,image)
+app.get('/api/images/:id/:usernameOnPage/',function (req,res,next)
+{   
+	images.findOne({id:parseInt(req.params.id),username: req.params.usernameOnPage},function(err,image)
 	{ 
 		return res.json(image); 
 	});
 });
 
+app.get('/api/users/',function (req,res,next)
+{       
+	users.find({},function(err,user)
+	{ 
+		return res.json(user); 
+	});
+});
+
 app.post('/api/comments/', function (req, res, next) {
     images.count ({},function (err,count){
-	
 	   if (count!=0)
-	    {messages.insert(new Message(req.body), function(err,message) 
+	    {messages.insert(new Message(req.body,req.params.usernameOnPage), function(err,message) 
 	     {
 	       if (err) return res.status(500).end(err);
 		     else if (!message)
@@ -230,18 +254,23 @@ app.post('/api/comments/', function (req, res, next) {
 
 // Read
 
-app.get('/api/comments/:id/:page', function (req, res, next) { 
-	messages.find({id:parseInt(req.params.id)}).sort({commentId:-1}).skip(req.params.page*10).limit(10).exec(function(err, message)
+app.get('/api/comments/:id/:page/:usernameOnPage/', function (req, res, next) { 
+	
+	console.log(req.params.usernameOnPage); 
+	console.log(req.params.id)
+	messages.find({id:parseInt(req.params.id),currentGallery: req.params.usernameOnPage}).sort({commentId:-1}).skip(req.params.page*10).limit(10).exec(function(err, message)
 	    {
 	      if (err){ return res.status(500).end(err);}
 	else if (!message)
 		    {return res.status(404).end(err); 
 		    }
 	     else {
+			 console.log(123);
 		 return res.json(message); 
 }
 	    });
 });
+
 
 app.get ('/api/comments/:id', function(req,res,next) {
 	messages.count ({id:parseInt(req.params.id)},function (err,count)
@@ -249,25 +278,22 @@ app.get ('/api/comments/:id', function(req,res,next) {
 		});
 });
 
-app.delete('/api/images/:id/',isAuthenticated,function(req,res,next)
-	{    images.find({}).sort({id:1}).exec(function(err,image)
+app.delete('/api/images/:id/',function(req,res,next)
+	{    
+		messages.remove({id:parseInt(req.params.id),username:req.username},{multi:true},function (err,numRemoved)
+		{}); 
+	     images.remove({id:parseInt(req.params.id),username:req.username},{},function(err,numRemoved)
+		{ }); 
+
+		images.find({username:req.username}).sort({id:1}).exec(function(err,image)
 		{ 
 		   for (let i=parseInt(req.params.id)-1; i<image.length; i++)
 			{
-images.update({id:image[i].id},{$inc:{id: -1 }},{},function()
-	{}); 
+				images.update({id:image[i].id},{$inc:{id: -1 }},{},function()
+				{}); 
 			}
 		});
-		if ( images.username!=req.username)
-		{
-			return res.status(403).end("forbidden"); 
-		}
-	    messages.remove({id:parseInt(req.params.id)},{multi:true},function (err,numRemoved)
-		{}); 
-	     images.remove({id:parseInt(req.params.id)},{},function(err,numRemoved)
-		{  
-		}); 
-	     images.findOne({id:1},function(err,image) 
+	     images.findOne({id:1,username:req.username},function(err,image) 
 		     { 
 			return res.json(1); 
 		     });

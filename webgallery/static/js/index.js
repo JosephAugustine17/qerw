@@ -1,6 +1,10 @@
 (function(){
     "use strict";
-    
+    const urlParams = new URLSearchParams(window.location.search);
+    const usernameOnPage = urlParams.get('username');
+    let getUsername = function(){
+        return document.cookie.replace(/(?:(?:^|.*;\s*)username\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    } 
     api.onError(function(err){
         console.error("[error]", err);
     });
@@ -14,7 +18,15 @@
         document.querySelector('#msg' + message._id + ' .upvote-icon').innerHTML = message.upvote;
         document.querySelector('#msg' + message._id + ' .downvote-icon').innerHTML = message.downvote;
     });
-    
+
+    api.onSignUpdate(function(users){
+        if (!users)window.location.href = '/login.html';
+        document.querySelector("#signin_button").style.visibility = (users)? 'hidden' : 'visible';
+        document.querySelector("#signout_button").style.visibility = (users)? 'visible' : 'hidden';
+        document.querySelector('#create_message_form').style.visibility = (users)? 'visible' : 'hidden';
+        document.querySelector('#gallery_button').style.visibility = (users)? 'visible' : 'hidden';
+        document.querySelector('#create_image_form').style.visibility = (users==usernameOnPage)? 'visible' : 'hidden';
+    });
  document.getElementById('add_username').addEventListener('click',function(e)
 	    { let box = document.getElementById('create_image_form');
 		    if (box.style.display =="none")
@@ -26,13 +38,7 @@
 		    { box.style.display = "none";  
 		    }
         });
-    
-     api.onUserUpdate(function(username){
-            document.querySelector("#signin_button").style.visibility = (username)? 'hidden' : 'visible';
-            document.querySelector("#signout_button").style.visibility = (username)? 'visible' : 'hidden';
-            document.querySelector('#create_message_form').style.visibility = (username)? 'visible' : 'hidden';
-            document.querySelector('#create_image_form').style.visibility = (username)? 'visible' : 'hidden';
-    });
+     
     api.onImageUpdate(function(image){
      if(image!=null)
 	    {
@@ -41,16 +47,19 @@
 		      elmt2.className = "image";
 		       let date = new Date(); 
 		      elmt2.innerHTML=`
-			      <img class="message_picture" src="/api/images/${image.username}/profile/picture/" alt="${image.username}">
+			      <img class="message_picture" src="/api/images/${image.username}/${image.id}/profile/picture/" alt="${image.username}">
 			      <div class = "image_author"> Author: ${image.username}</div> 
 			      <div class = "image_title"> Title :${image.title}></div>
 			      <div class = "date" > Date : ${date}></div>  
-			      <div class = "delete-icon icon" > </div>
-			     
-			      `;
-		     elmt2.querySelector(".delete-icon").addEventListener('click', function()
-			     { api.deleteImage(image.id); 
-			     });
+                  `;
+                  if (usernameOnPage ==getUsername())
+                  {
+                      elmt2.innerHTML=elmt2.innerHTML +('<div class = "delete-icon icon" > </div> ')
+                      elmt2.querySelector(".delete-icon").addEventListener('click', function(){
+                     api.deleteImage(image.id);
+                        location.reload(true);
+                      });                   
+                  }
 		     document.getElementById("images").prepend(elmt2); 	
 	  
 	    }
@@ -72,11 +81,15 @@
                 <div class="message_content">${message.content}</div>
                 <div class="upvote-icon icon">${message.upvote}</div>
                 <div class="downvote-icon icon">${message.downvote}</div>
-                <div class="delete-icon icon"></div>
+                
             `;
-            elmt.querySelector(".delete-icon").addEventListener('click', function(){
-                api.deleteComment(message.commentId);
-            });
+            if (usernameOnPage ==getUsername())
+            {
+                elmt.innerHTML=elmt.innerHTML +('<div class = "delete-icon icon" > </div> ')
+                elmt.querySelector(".delete-icon").addEventListener('click', function(){
+                    api.deleteComment(message.commentId);
+                });                   
+            }
             elmt.querySelector(".upvote-icon").addEventListener('click', function(){
                 api.upvoteMessage(message._id);
             });
@@ -119,7 +132,8 @@
 	document.getElementById("CommentBack-button").addEventListener('click',function(e)
 		{ e.preventDefault(); 
 		  api.backComment(); 
-		}); 
+        });
+        
     });
 }())
 

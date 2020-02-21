@@ -13,8 +13,8 @@
             error_box.style.visibility = "visible";
         });
         
-        api.onUserUpdate(function(username){
-            if (username) window.location.href = '/';
+        api.onSignUpdate(function(username){
+            if (username) window.location.href = '/gallery.html';
         });
         
         function submit(){
