@@ -2,7 +2,14 @@
     "use strict";
     
     window.addEventListener('load', function(){
-        
+        document.getElementById("next-users").addEventListener('click',function(e)
+		{ e.preventDefault(); 
+		  api.onNextUserUpdate();
+		});
+	 document.getElementById("back-users").addEventListener('click',function(e)
+		 { e.preventDefault(); 
+		   api.onBackUserUpdate(); 
+		 });
         api.onError(function(err){
             console.error("[error]", err);
         });
@@ -28,7 +35,7 @@
                        <div class = "image_author"> Author: ${user._id} </div>
                        <a href="/index.html?username=${user._id}">${user._id} Gallery </a>
                        `;
-                  document.getElementById("gallery").prepend(elmt2);
+                  document.getElementById("gallery").append(elmt2);
             }); 
              });
         }); 

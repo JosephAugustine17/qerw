@@ -22,9 +22,9 @@ let users = new Datastore({filename:'db/users.db',autoload:true});
 
 var Message = (function(){
     var commentId =1 ; 
-    return function item(message){
+    return function item(message,username){
         this.content = message.content;
-        this.username = message.username;
+        this.username = username
         this.upvote = 0;
 	this.id = message.imageId;
 	this.commentId=commentId++; 
@@ -41,9 +41,7 @@ var Image= (function ()	{
 		 this.id = id+1; 
 		  this.username = username; 
 		   this.file =file;
-			  this.title = user.title;
-			
-		     
+			  this.title = user.title;	     
 		}
 	}());
 	app.use(session({
@@ -227,9 +225,9 @@ app.get('/api/images/:id/:usernameOnPage/',function (req,res,next)
 	});
 });
 
-app.get('/api/users/',function (req,res,next)
+app.get('/api/users/:userPage',function (req,res,next)
 {       
-	users.find({},function(err,user)
+	users.find({}).sort({_id:1}).skip(req.params.userPage*10).limit(10).exec(function(err,user)
 	{ 
 		return res.json(user); 
 	});
@@ -238,7 +236,7 @@ app.get('/api/users/',function (req,res,next)
 app.post('/api/comments/', function (req, res, next) {
     images.count ({},function (err,count){
 	   if (count!=0)
-	    {messages.insert(new Message(req.body,req.params.usernameOnPage), function(err,message) 
+	    {messages.insert(new Message(req.body,req.username), function(err,message) 
 	     {
 	       if (err) return res.status(500).end(err);
 		     else if (!message)
@@ -272,11 +270,40 @@ app.get('/api/comments/:id/:page/:usernameOnPage/', function (req, res, next) {
 });
 
 
-app.get ('/api/comments/:id', function(req,res,next) {
-	messages.count ({id:parseInt(req.params.id)},function (err,count)
+app.get('/api/users/:page/', function (req, res, next) { 
+	
+	users.find({}).sort({_id:-1}).skip(req.params.page*10).limit(10).exec(function(err, user)
+	    {
+	      if (err){ return res.status(500).end(err);}
+	else if (!user)
+		    {return res.status(404).end(err); 
+		    }
+	     else {
+			 console.log(123);
+		 return res.json(user); 
+}
+	    });
+});
+
+
+app.get ('/api/comments/', function(req,res,next) {
+	messages.count ({},function (err,count)
 		{ return res.json(count); 
 		});
 });
+
+app.get ('/api/comments/:imageId', function(req,res,next) {
+	messages.count ({id:parseInt(req.params.imageId)},function (err,count)
+		{ return res.json(count); 
+		});
+});
+
+app.get ('/api/users/', function(req,res,next) {
+	users.count ({},function (err,count)
+		{ return res.json(count); 
+		});
+});
+
 
 app.delete('/api/images/:id/',function(req,res,next)
 	{    
@@ -322,12 +349,22 @@ app.patch('/api/comments/:id/',isAuthenticated,function (req, res, next) {
 });
 
 // Delete
-app.delete('/api/comments/:id/', isAuthenticated, function (req, res, next) {
-
-	 messages.remove({commentId:parseInt(req.params.id)},{multi:false},function(err,numRemoved)
+app.delete('/api/comments/:id/:usernameOnPage/', function (req, res, next) {
+	console.log("id is " + req.params.id); 
+ 	console.log("username " + req.params.usernameOnPage); 
+         messages.findOne({commentId: parseInt(req.params.id)},function (err,message) 
+       {console.log(message.username);
+         if(req.username == message.username || req.params.usernameOnPage == req.username) 
+        { 
+ 	 messages.remove({commentId:parseInt(req.params.id)},{multi:false},function(err,numRemoved)
        { if (err) return status(500).end(err);
 	  return res.send({sucess:true}); 
-       }); 
+       });
+}
+else 
+{  return res.status(403).end('forbiddden');  
+}
+});  
 });
 
 const http = require('http');

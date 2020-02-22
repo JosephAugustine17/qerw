@@ -81,15 +81,11 @@
                 <div class="message_content">${message.content}</div>
                 <div class="upvote-icon icon">${message.upvote}</div>
                 <div class="downvote-icon icon">${message.downvote}</div>
-                
+                <div class = "delete-icon icon" > </div>
             `;
-            if (usernameOnPage ==getUsername())
-            {
-                elmt.innerHTML=elmt.innerHTML +('<div class = "delete-icon icon" > </div> ')
                 elmt.querySelector(".delete-icon").addEventListener('click', function(){
                     api.deleteComment(message.commentId);
                 });                   
-            }
             elmt.querySelector(".upvote-icon").addEventListener('click', function(){
                 api.upvoteMessage(message._id);
             });

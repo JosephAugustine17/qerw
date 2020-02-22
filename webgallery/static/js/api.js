@@ -2,7 +2,7 @@
 let api = (function(){
 	"use strict"; 
 if (!localStorage.getItem('store'))
-		{ localStorage.setItem('image', JSON.stringify({currentId:1,page:0}))
+		{ localStorage.setItem('image', JSON.stringify({currentId:1,page:0,userPage:0}))
 				};
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -90,6 +90,16 @@ function getPage()
 	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
 	  return (jsonObject.page); 
 	}
+
+function setUserPage(page)
+	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
+		jsonObject.userPage=page;
+		localStorage.setItem('image',JSON.stringify(jsonObject)); 
+	}
+function getUserPage()
+	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
+	  return (jsonObject.Userpage); 
+	}
 function changeCurrent(id)
 	{ let jsonObject = JSON.parse(localStorage.getItem('image')); 
              jsonObject.currentId = id; 
@@ -159,9 +169,8 @@ module.upvoteMessage = function(commentsId){
     }
 	let getUsers = function (callback)
 	{
-		send("GET", "/api/users/", null, callback); 
+		send("GET", "/api/users/"+getUserPage() + "/", null, callback); 
 	}
-    
     module.signin = function(username, password){
         send("POST", "/signin/", {username, password}, function(err, res){
              if (err) return notifyErrorListeners(err);
@@ -203,9 +212,9 @@ module.upvoteMessage = function(commentsId){
 	{  let current = getCurrentId();
 	   let page = getPage()+1;
 	  
-	  send("GET", "/api/comments/"+current+"/", null,function(err,res)
+	  send("GET", "/api/comments/", null,function(err,res)
 		  { if (res > (page*10))
-			  { setPage(page); 
+			  { setPage(Math.floor(res/10)); ; 
 			  }
 		    else
 			  { setPage(0); 
@@ -217,10 +226,16 @@ module.upvoteMessage = function(commentsId){
 module.backComment = function () 
 	{  let current = getCurrentId();
 	   let page = getPage()-1;
-	  send("GET", "/api/comments/"+current+"/", null,function(err,res)
+	  send("GET", "/api/comments/", null,function(err,res)
 		  { 
 		if (page< 0)
-			  { setPage(Math.floor(res/10)); 
+			  {   if (res%10 ==0)
+				{ setPage(Math.floor(res/10)-1);
+				}
+			      else
+				{			
+			   	setPage(Math.floor(res/10));
+				}			 
 			  }
 		     
 		     else 
@@ -235,23 +250,45 @@ module.backComment = function ()
   let getNextImage = function(imageId,callback)
 	{ send("GET", "/api/images/" + imageId+"/"+ usernameOnPage + "/next/", null,callback); 
 	}
-	
-	function notifyCommentListeners(imageId)
-	{  let commentList = [];  
+	 
+function notifyCommentListeners(imageId)
+	{  let commentList = [];
 	   getComment(imageId,function(err,comments)
 		{
 			comments.forEach(function(comment)
-				{
+				{	
 					if(comment.id == getCurrentId())
-					{ commentList.push(comment); 
+					{ 
+					commentList.push(comment); 
 					}
-				}); 	
+				});
+		 if (commentList.length==0) 
+                 { 
+			if(getPage() !=0)
+                          {setPage(getPage()-1); 
+			   }
+		 }
 		 if (err) return notifyErrorListeners(err);
 		  commentListeners.forEach(function(listener)
 			  {listener(commentList);
 			  });
 	});
 	}
+
+
+
+function notifyUserListeners()
+	{  let userList = [];  
+	   getUsers(function(err,users)
+		{
+			
+		 if (err) return notifyErrorListeners(err);
+		  userListeners.forEach(function(listener)
+			  {listener(users);
+			  });
+	});
+	}
+
     function notifyImageListeners(imageId)
 	{ 
 		getImages(imageId,function(err,images)
@@ -305,9 +342,18 @@ module.backComment = function ()
 
     // delete a comment to an image
     module.deleteComment = function(commentId){
-       send("DELETE", "/api/comments/"+commentId+ "/", null,function(err,res) 
-	       { if(err) return notifyErrorListeners(err); 
-		 notifyCommentListeners(getCurrentId()); 
+       send("DELETE", "/api/comments/"+commentId+ "/" + usernameOnPage+"/", null,function(err,res) 
+	       { if(err) return notifyErrorListeners(err);
+		 send("GET", "/api/comments/"+getCurrentId()+"/", null,function(err,res) 
+		  { 
+		  if (res%10 == 0 && res!=0 )
+		  { if (getPage()!=0)
+			{ setPage(getPage()-1); 
+			}
+		  }
+		  notifyCommentListeners(getCurrentId()); 
+		  }); 
+		 
 	       });
     }
     
@@ -327,6 +373,32 @@ module.backComment = function ()
 		    {if (err) return notifyErrorListeners(err); 
 		   handler(users);
 		    });
+	}
+
+   module.onNextUserUpdate = function()	{  
+	   let page = getPage()+1;	  
+	  send("GET", "/api/users/", null,function(err,res)
+		  { if (res > (page*10))
+			  { setUserPage(page); 
+			  }
+		    else
+			  { setUserPage(0); 
+			  }
+		   notifyUserListeners(); 
+		  });
+	}
+   module.onBackUserUpdate = function(){
+	   let page = getPage()-1;
+	  send("GET", "/api/users/", null,function(err,res)
+		  { 
+		if (page< 0)
+			  { setUserPage(Math.floor(res/10)); 
+			  }
+		     else 
+			  {setUserPage(page); 
+			  }
+	    notifyUserListeners(); 
+});
 	}
     
     // call handler when a comment is added or deleted to an image
