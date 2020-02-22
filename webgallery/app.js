@@ -280,16 +280,16 @@ app.get ('/api/comments/:id', function(req,res,next) {
 
 app.delete('/api/images/:id/',function(req,res,next)
 	{    
-		messages.remove({id:parseInt(req.params.id),username:req.username},{multi:true},function (err,numRemoved)
+		messages.remove({id:parseInt(req.params.id),currentGallery:req.username},{multi:true},function (err,numRemoved)
 		{}); 
 	     images.remove({id:parseInt(req.params.id),username:req.username},{},function(err,numRemoved)
 		{ }); 
 
-		images.find({username:req.username}).sort({id:1}).exec(function(err,image)
+		images.find({usersname:req.username}).sort({id:1}).exec(function(err,image)
 		{ 
 		   for (let i=parseInt(req.params.id)-1; i<image.length; i++)
 			{
-				images.update({id:image[i].id},{$inc:{id: -1 }},{},function()
+				images.update({id:image[i].id,username: req.username},{$inc:{id: -1 }},{},function()
 				{}); 
 			}
 		});
